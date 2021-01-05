@@ -1,7 +1,7 @@
 // PROVIDED CODE BELOW (LINES 1 - 80) DO NOT REMOVE
 
 // The store will hold all information needed globally
-var store = {
+let store = {
   track_id: undefined,
   player_id: undefined,
   race_id: undefined,
@@ -79,13 +79,19 @@ async function handleCreateRace() {
     // TODO - Get player_id and track_id from the store
     const trackId = store.track_id;
     const playerId = store.player_id;
+    // Check for valid player_id and track id, due to last review
+    if (!trackId || !playerId) {
+      alert(`Please select track and racer to start the race!`);
+      return;
+    }
     // const race = TODO - invoke the API call to create the race, then save the result
     const race = await createRace(trackId, playerId);
     const raceTrack = race.Track;
     const racePod = race.Cars;
 
     // TODO - update the store with the race id
-    store.race_id = race.ID;
+    // Change store.race_id to race.ID - 1 to get everything working fine
+    store.race_id = parseInt(race.ID) - 1;
 
     // render starting UI
     renderAt("#race", renderRaceStartView(raceTrack, racePod));
@@ -109,32 +115,20 @@ async function runRace(raceID) {
     return new Promise((resolve) => {
       // Solution Callbacks - Lesson 2 - section 15
       const runningRace1 = () => {
-        getRace(store.race_id).then((res) => {
-          console.log("aaaaaa", res);
-          if (res.status === "in-progress") {
-            renderAt("#leaderBoard", raceProgress(res.positions));
-          } else if (res.status === "finished") {
-            clearInterval(runningRace2);
-            renderAt("#race", resultsView(res.positions)); // to render the results view
-            resolve(res);
-          }
-        });
+        getRace(raceID)
+          .then((res) => {
+            if (res.status === "in-progress") {
+              renderAt("#leaderBoard", raceProgress(res.positions));
+            } else if (res.status === "finished") {
+              clearInterval(runningRace2);
+              renderAt("#race", resultsView(res.positions)); // to render the results view
+              resolve(res);
+            }
+          })
+          .catch((err) => console.log(err));
       };
       const runningRace2 = setInterval(runningRace1, 500);
-      // TODO - use Javascript's built in setInterval method to get race info every 500ms
-      /* 
-				TODO - if the race info status property is "in-progress", update the leaderboard by calling:
-		
-				renderAt('#leaderBoard', raceProgress(res.positions))
-			*/
-      /* 
-				TODO - if the race info status property is "finished", run the following:
-		
-				clearInterval(raceInterval) // to stop the interval from repeating
-				renderAt('#race', resultsView(res.positions)) // to render the results view
-				reslove(res) // resolve the promise
-			*/
-    });
+    })
     // remember to add error handling for the Promise
   } catch (err) {
     console.log(err);
@@ -177,7 +171,8 @@ function handleSelectPodRacer(target) {
   target.classList.add("selected");
 
   // TODO - save the selected racer to the store
-  store.player_id = target.id;
+  //store player_id and track_id as integer rather than doing it in every API call and raceProgress()
+  store.player_id = parseInt(target.id);
 }
 
 function handleSelectTrack(target) {
@@ -199,7 +194,7 @@ function handleSelectTrack(target) {
 function handleAccelerate() {
   console.log("accelerate button clicked");
   // TODO - Invoke the API call to accelerate
-  accelerate(store.race_id);
+  accelerate(store.race_id)
 }
 
 // HTML VIEWS ------------------------------------------------
@@ -301,7 +296,7 @@ function resultsView(positions) {
 }
 
 function raceProgress(positions) {
-  let userPlayer = positions.find((e) => e.id === store.player_id);
+  let userPlayer = positions.find((e) => e.id === parseInt(store.player_id));
   userPlayer.driver_name += " (you)";
 
   positions = positions.sort((a, b) => (a.segment > b.segment ? -1 : 1));
@@ -321,7 +316,7 @@ function raceProgress(positions) {
 		<main>
 			<h3>Leaderboard</h3>
 			<section id="leaderBoard">
-				${results}
+				${results.join(" ")}
 			</section>
 		</main>
 	`;
